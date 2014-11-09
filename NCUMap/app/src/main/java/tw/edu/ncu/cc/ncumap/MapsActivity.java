@@ -1,19 +1,33 @@
 package tw.edu.ncu.cc.ncumap;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.test.suitebuilder.annotation.LargeTest;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
+import android.util.Log;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import tw.edu.ncu.cc.location.client.tool.config.LocationConfig;
@@ -34,46 +48,21 @@ public class MapsActivity extends FragmentActivity {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private NCUAsyncLocationClient locationClient;
+    private Map<String, NCUMarker> markers;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        LocationConfig locationConfig;
-        locationConfig = new NCULocationConfig();
-        locationConfig.setServerAddress("http://140.115.3.97/location");
+        markers = new HashMap<String, NCUMarker>();
+        locationClient = MyActivity.locationClient;
+        
 
         setUpMapIfNeeded();
 
-        Intent intent = getIntent();
-        String queryString = intent.getStringExtra("queryString");
-
-        locationClient = new NCUAsyncLocationClient(locationConfig, this);
-
-        locationClient.getPlaces(PlaceType.BUS_STATION, new ResponseListener<Place>() {
-            @Override
-            public void onResponse(Set<Place> places) {
-                setPlaces(places);
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-            }
-        });
-
-        if (! queryString.isEmpty())
-            locationClient.getWords(queryString, new ResponseListener<Word>() {
-                @Override
-                public void onResponse(Set<Word> words) {
-                    setWord(words);
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-
-                }
-            });
+        if (MyActivity.word != null)
+            setWord(MyActivity.word);
 
 
     }
@@ -123,63 +112,87 @@ public class MapsActivity extends FragmentActivity {
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         String provider = locationManager.getBestProvider(new Criteria(), true);
         Location myLocation = locationManager.getLastKnownLocation(provider);
-        LatLng myLatLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        LatLng myLatLng = new LatLng(24.969457, 121.192548);  //new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, 17));
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                NCUMarker ncuMarker = markers.get(marker.getId());
+                AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+                builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
+                TextView message = (TextView) getLayoutInflater().inflate(R.layout.dialog_content, null);
+                switch (ncuMarker.getWordType()) {
+                    case PERSON:
+                        Person person = (Person) ncuMarker.getObject();
+                        message.setText(Html.fromHtml("TEL: <a href=\"" + person.getOfficePhone() + "\">" + person.getOfficePhone() + "</a>"));
+                        message.setMovementMethod(LinkMovementMethod.getInstance());
+                        break;
+                    case PLACE:
+                        Place place = (Place) ncuMarker.getObject();
+                        break;
+                    case UNIT:
+                        Unit unit = (Unit) ncuMarker.getObject();
+                        break;
+                }
+                builder.setView(message);
+                builder.setNegativeButton(R.string.close, null);
+                builder.show();
+            }
+        });
     }
 
-    private void setWord(Set<Word> words) {
-        for (Word word : words) {
-            WordType type = word.getType();
-            switch (type) {
-                case PERSON:
-                    locationClient.getPeople(word.getWord(), new ResponseListener<Person>() {
-                        @Override
-                        public void onResponse(Set<Person> people) {
-                            setPeople(people);
-                        }
+    private void setWord(Word word) {
+        WordType type = word.getType();
+        switch (type) {
+            case PERSON:
+                locationClient.getPeople(word.getWord(), new ResponseListener<Person>() {
+                    @Override
+                    public void onResponse(Set<Person> people) {
+                        setPeople(people);
+                    }
 
-                        @Override
-                        public void onError(Throwable throwable) {
+                    @Override
+                    public void onError(Throwable throwable) {
 
-                        }
-                    });
-                    break;
-                case UNIT:
-                    locationClient.getUnits(word.getWord(), new ResponseListener<Unit>() {
-                        @Override
-                        public void onResponse(Set<Unit> units) {
-                            setUnits(units);
-                        }
+                    }
+                });
+                break;
+            case UNIT:
+                locationClient.getUnits(word.getWord(), new ResponseListener<Unit>() {
+                    @Override
+                    public void onResponse(Set<Unit> units) {
+                        setUnits(units);
+                    }
 
-                        @Override
-                        public void onError(Throwable throwable) {
+                    @Override
+                    public void onError(Throwable throwable) {
 
-                        }
-                    });
-                    break;
-                case PLACE:
-                    locationClient.getPlaces(word.getWord(), new ResponseListener<Place>() {
-                        @Override
-                        public void onResponse(Set<Place> places) {
-                            setPlaces(places);
-                        }
+                    }
+                });
+                break;
+            case PLACE:
+                locationClient.getPlaces(word.getWord(), new ResponseListener<Place>() {
+                    @Override
+                    public void onResponse(Set<Place> places) {
+                        setPlaces(places);
+                    }
 
-                        @Override
-                        public void onError(Throwable throwable) {
+                    @Override
+                    public void onError(Throwable throwable) {
 
-                        }
-                    });
-            }
+                    }
+                });
         }
     }
 
     private void setPlaces(Set<Place> places) {
         for (Place place : places) {
-            mMap.addMarker(new MarkerOptions()
+            Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(place.getLocation().getLat(), place.getLocation().getLng()))
                     .title(place.getChineseName())
-                    .snippet(place.getEnglishName()))
-                    .setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                    .snippet(place.getEnglishName())
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+            markers.put(marker.getId(), new NCUMarker(WordType.PLACE, place));
         }
     }
 
@@ -187,11 +200,12 @@ public class MapsActivity extends FragmentActivity {
         for (Unit unit : units) {
             if (unit.getLocation() == null)
                 continue;
-            mMap.addMarker(new MarkerOptions()
+            Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(unit.getLocation().getLat(), unit.getLocation().getLng()))
-                    .title(unit.getChineseName())
-                    .snippet(unit.getEnglishName()))
-                    .setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+                    .title(unit.getFullName())
+                    .snippet(unit.getEnglishName())
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)));
+            markers.put(marker.getId(), new NCUMarker(WordType.UNIT, unit));
         }
     }
 
@@ -199,11 +213,30 @@ public class MapsActivity extends FragmentActivity {
         for (Person person : people) {
             if (person.getPrimaryUnit().getLocation() == null)
                 continue;
-            mMap.addMarker(new MarkerOptions()
+            Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(person.getPrimaryUnit().getLocation().getLat(), person.getPrimaryUnit().getLocation().getLng()))
                     .title(person.getChineseName())
-                    .snippet(person.getEnglishName()))
-                    .setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                    .snippet(person.getEnglishName())
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            markers.put(marker.getId(), new NCUMarker(WordType.PERSON, person));
         }
+    }
+}
+
+class NCUMarker {
+    private WordType wordType;
+    private Object object;
+
+    public NCUMarker (WordType wordType, Object object) {
+        this.wordType = wordType;
+        this.object = object;
+    }
+
+    public WordType getWordType() {
+        return wordType;
+    }
+
+    public Object getObject() {
+        return object;
     }
 }

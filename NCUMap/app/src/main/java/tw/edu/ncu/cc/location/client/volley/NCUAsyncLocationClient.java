@@ -71,7 +71,7 @@ public class NCUAsyncLocationClient implements AsynLocationClient {
     }
 
     private <T> void sendRequest( String path, final ResponseListener<T> responseListener, final TypeToken typeToken ) {
-        Log.w("request", "sent");
+        Log.w("request", "sent: " + baseURL + path);
         queue.add( new StringRequest( Request.Method.GET, baseURL + path,
                 new Response.Listener<String>() {
                     @Override

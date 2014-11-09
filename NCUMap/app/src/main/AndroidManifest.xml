@@ -22,9 +22,6 @@
             android:name=".MyActivity"
             android:label="@string/app_name" >
 
-            <meta-data android:name=".MyActivity"
-                android:resource="@xml/searchable" />
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

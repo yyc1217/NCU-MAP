@@ -7,5 +7,7 @@
     <string name="search_title">Search</string>
     <string name="search_hint">hint</string>
     <string name="google_maps_key">AIzaSyC0pBVdrZnU3vyaMdeDyf-YWJ4bOk0ig28</string>
+    <string name="close">關閉</string>
+    <string name="submit_title">Submit</string>
 
 </resources>
