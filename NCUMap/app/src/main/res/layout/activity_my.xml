@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:id="@+id/listView" />
 
-    <GridView
+    <!--GridView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:id="@+id/gridView"
@@ -18,40 +18,61 @@
         android:stretchMode="columnWidth"
         android:gravity="center"
         android:numColumns="auto_fit"
-        android:layout_weight="1" />
+        android:layout_weight="1" /-->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:id="@+id/grid_vertical"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:textAppearanceMedium"
+        android:gravity="center"
+        android:text="@string/emergency_number"
+        android:background="#dddddd"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        style="?android:buttonBarStyle">
 
-        <ImageButton
+        <Button
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/imageButton"
-            android:src="@drawable/emergency_telephone"/>
+            android:id="@+id/militaryButton"
+            android:text="@string/military_education_office"
+            style="?android:buttonBarButtonStyle"/>
 
-        <ImageButton
+        <Button
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/imageButton2"
-            android:src="@drawable/emergency_telephone"/>
+            android:id="@+id/frontSecurityButton"
+            android:text="@string/front_security_post"
+            style="?android:buttonBarButtonStyle"/>
 
-        <ImageButton
+        <Button
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/imageButton3"
-            android:src="@drawable/emergency_telephone"/>
+            android:id="@+id/backSecurityButton"
+            android:text="@string/back_security_post"
+            style="?android:buttonBarButtonStyle"/>
 
-        <ImageButton
+        <Button
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/imageButton4"
-            android:src="@drawable/emergency_telephone"/>
+            android:id="@+id/healthButton"
+            android:text="@string/healthCenter"
+            style="?android:buttonBarButtonStyle"/>
     </LinearLayout>
 
 </LinearLayout>

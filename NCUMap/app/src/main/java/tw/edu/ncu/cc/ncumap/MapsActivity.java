@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -27,6 +28,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -50,6 +52,8 @@ public class MapsActivity extends FragmentActivity {
     private NCUAsyncLocationClient locationClient;
     private Map<String, NCUMarker> markers;
 
+    private final LatLng ncuLocation = new LatLng(24.968297, 121.192151);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,13 +61,26 @@ public class MapsActivity extends FragmentActivity {
 
         markers = new HashMap<String, NCUMarker>();
         locationClient = MyActivity.locationClient;
-        
+
 
         setUpMapIfNeeded();
 
         if (MyActivity.word != null)
             setWord(MyActivity.word);
+        for (final QueryData queryData : MyActivity.selectedQueryOptions) {
+            Log.w("PlaceType", queryData.getPlaceType().value());
+            locationClient.getPlaces(queryData.getPlaceType(), new ResponseListener<Place>() {
+                @Override
+                public void onResponse(List<Place> places) {
+                    setPlaces(places, queryData.getNum());
+                }
 
+                @Override
+                public void onError(Throwable throwable) {
+
+                }
+            });
+        }
 
     }
 
@@ -111,9 +128,30 @@ public class MapsActivity extends FragmentActivity {
         mMap.setMyLocationEnabled(true);
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         String provider = locationManager.getBestProvider(new Criteria(), true);
-        Location myLocation = locationManager.getLastKnownLocation(provider);
-        LatLng myLatLng = new LatLng(24.969457, 121.192548);  //new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, 17));
+        Location location = locationManager.getLastKnownLocation(provider);
+        moveToLocation(location);
+        locationManager.requestSingleUpdate(provider, new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                moveToLocation(location);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+
+            }
+        }, null);
+
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(Marker marker) {
@@ -121,11 +159,10 @@ public class MapsActivity extends FragmentActivity {
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
                 TextView message = (TextView) getLayoutInflater().inflate(R.layout.dialog_content, null);
+                message.setText("目前沒有可以顯示的資訊");
                 switch (ncuMarker.getWordType()) {
                     case PERSON:
                         Person person = (Person) ncuMarker.getObject();
-                        message.setText(Html.fromHtml("TEL: <a href=\"" + person.getOfficePhone() + "\">" + person.getOfficePhone() + "</a>"));
-                        message.setMovementMethod(LinkMovementMethod.getInstance());
                         break;
                     case PLACE:
                         Place place = (Place) ncuMarker.getObject();
@@ -141,13 +178,21 @@ public class MapsActivity extends FragmentActivity {
         });
     }
 
+    private void moveToLocation(Location location) {
+        LatLng myLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+        float[] result = new float[3];
+        Location.distanceBetween(myLatLng.latitude, myLatLng.longitude, ncuLocation.latitude, ncuLocation.longitude, result);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(result[0] > 20000 ? ncuLocation : myLatLng, 17));
+        Log.w("Distance", String.valueOf(result[0]));
+    }
+
     private void setWord(Word word) {
         WordType type = word.getType();
         switch (type) {
             case PERSON:
                 locationClient.getPeople(word.getWord(), new ResponseListener<Person>() {
                     @Override
-                    public void onResponse(Set<Person> people) {
+                    public void onResponse(List<Person> people) {
                         setPeople(people);
                     }
 
@@ -160,7 +205,7 @@ public class MapsActivity extends FragmentActivity {
             case UNIT:
                 locationClient.getUnits(word.getWord(), new ResponseListener<Unit>() {
                     @Override
-                    public void onResponse(Set<Unit> units) {
+                    public void onResponse(List<Unit> units) {
                         setUnits(units);
                     }
 
@@ -173,8 +218,8 @@ public class MapsActivity extends FragmentActivity {
             case PLACE:
                 locationClient.getPlaces(word.getWord(), new ResponseListener<Place>() {
                     @Override
-                    public void onResponse(Set<Place> places) {
-                        setPlaces(places);
+                    public void onResponse(List<Place> places) {
+                        setPlaces(places, 16);
                     }
 
                     @Override
@@ -185,18 +230,18 @@ public class MapsActivity extends FragmentActivity {
         }
     }
 
-    private void setPlaces(Set<Place> places) {
+    private void setPlaces(List<Place> places, float iconColor) {
         for (Place place : places) {
             Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(place.getLocation().getLat(), place.getLocation().getLng()))
                     .title(place.getChineseName())
                     .snippet(place.getEnglishName())
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                    .icon(BitmapDescriptorFactory.defaultMarker(iconColor * 19)));
             markers.put(marker.getId(), new NCUMarker(WordType.PLACE, place));
         }
     }
 
-    private void setUnits(Set<Unit> units) {
+    private void setUnits(List<Unit> units) {
         for (Unit unit : units) {
             if (unit.getLocation() == null)
                 continue;
@@ -204,12 +249,12 @@ public class MapsActivity extends FragmentActivity {
                     .position(new LatLng(unit.getLocation().getLat(), unit.getLocation().getLng()))
                     .title(unit.getFullName())
                     .snippet(unit.getEnglishName())
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)));
+                    .icon(BitmapDescriptorFactory.defaultMarker(323)));
             markers.put(marker.getId(), new NCUMarker(WordType.UNIT, unit));
         }
     }
 
-    private void setPeople(Set<Person> people) {
+    private void setPeople(List<Person> people) {
         for (Person person : people) {
             if (person.getPrimaryUnit().getLocation() == null)
                 continue;
@@ -217,7 +262,7 @@ public class MapsActivity extends FragmentActivity {
                     .position(new LatLng(person.getPrimaryUnit().getLocation().getLat(), person.getPrimaryUnit().getLocation().getLng()))
                     .title(person.getChineseName())
                     .snippet(person.getEnglishName())
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                    .icon(BitmapDescriptorFactory.defaultMarker(342)));
             markers.put(marker.getId(), new NCUMarker(WordType.PERSON, person));
         }
     }

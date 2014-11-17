@@ -9,5 +9,10 @@
     <string name="google_maps_key">AIzaSyC0pBVdrZnU3vyaMdeDyf-YWJ4bOk0ig28</string>
     <string name="close">關閉</string>
     <string name="submit_title">Submit</string>
+    <string name="front_security_post">前門警衛室</string>
+    <string name="back_security_post">後門警衛室</string>
+    <string name="military_education_office">軍訓室</string>
+    <string name="emergency_number">緊急聯絡電話</string>
+    <string name="healthCenter">衛生保健組</string>
 
 </resources>

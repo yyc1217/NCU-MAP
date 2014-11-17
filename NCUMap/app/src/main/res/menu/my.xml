@@ -9,4 +9,9 @@
         android:showAsAction="collapseActionView|ifRoom"
         android:actionViewClass="android.widget.SearchView" />
 
+    <item android:id="@+id/submit"
+        android:title="@string/submit_title"
+        android:showAsAction="always"
+        android:visible="false" />
+
 </menu>

@@ -3,16 +3,16 @@ package tw.edu.ncu.cc.location.client.tool.converter;
 import tw.edu.ncu.cc.location.data.wrapper.ResultWrapper;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.LinkedList;
+import java.util.List;
 
 public class ResponseConverter {
 
-    public static <T> Set<T> convert( ResultWrapper<T> resultWrapper ) {
+    public static <T> List<T> convert( ResultWrapper<T> resultWrapper ) {
         if( resultWrapper.getResult() == null ) {
-            return new HashSet<T>();
+            return new LinkedList<T>();
         } else {
-            return new HashSet<T>( Arrays.asList( resultWrapper.getResult() ) );
+            return new LinkedList<T>( Arrays.asList( resultWrapper.getResult() ) );
         }
     }
 

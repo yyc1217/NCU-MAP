@@ -6,17 +6,17 @@ import tw.edu.ncu.cc.location.data.place.Place;
 import tw.edu.ncu.cc.location.data.place.PlaceType;
 import tw.edu.ncu.cc.location.data.unit.Unit;
 
-import java.util.Set;
+import java.util.List;
 
 public interface SyncLocationClient {
 
-    public Set<Place> getPlaces( String placeName );
-    public Set<Place> getPlaces( PlaceType placeType );
+    public List<Place> getPlaces( String placeName );
+    public List<Place> getPlaces( PlaceType placeType );
 
-    public Set<Person> getPeople( String peopleName );
-    public Set<Unit> getUnits( String unitName );
+    public List<Person> getPeople( String peopleName );
+    public List<Unit> getUnits( String unitName );
 
-    public Set<Word> getWords( String keyword );
+    public List<Word> getWords( String keyword );
 
 }
 
