@@ -138,29 +138,33 @@ public class MapsActivity extends FragmentActivity {
         mMap.setMyLocationEnabled(true);
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         String provider = locationManager.getBestProvider(new Criteria(), true);
-        Location location = locationManager.getLastKnownLocation(provider);
-        moveToLocation(location);
-        locationManager.requestSingleUpdate(provider, new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                moveToLocation(location);
-            }
+        if (provider != null) {
+            Location location = locationManager.getLastKnownLocation(provider);
+            moveToLocation(location);
+            locationManager.requestSingleUpdate(provider, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    moveToLocation(location);
+                }
 
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
 
-            }
+                }
 
-            @Override
-            public void onProviderEnabled(String provider) {
+                @Override
+                public void onProviderEnabled(String provider) {
 
-            }
+                }
 
-            @Override
-            public void onProviderDisabled(String provider) {
+                @Override
+                public void onProviderDisabled(String provider) {
 
-            }
-        }, null);
+                }
+            }, null);
+        }
+        else
+            moveToLocation(null);
 
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override

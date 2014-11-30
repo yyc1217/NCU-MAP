@@ -1,25 +1,26 @@
 package tw.edu.ncu.cc.ncumap;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SearchView;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,25 +59,25 @@ public class MyActivity extends Activity {
         setContentView(R.layout.activity_my);
 
         //buttons of emergency numbers
-        Button militaryCall = (Button) findViewById(R.id.militaryButton);
-        Button frontSecurityCall = (Button) findViewById(R.id.frontSecurityButton);
-        Button backSecurityCall = (Button) findViewById(R.id.backSecurityButton);
-        Button healthButton = (Button) findViewById(R.id.healthButton);
+        Button militaryCall = (Button) findViewById(R.id.military_button);
+        Button frontSecurityCall = (Button) findViewById(R.id.front_security_button);
+        Button backSecurityCall = (Button) findViewById(R.id.back_security_button);
+        Button healthButton = (Button) findViewById(R.id.health_button);
         View.OnClickListener callListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_DIAL);
                 switch (v.getId()) {
-                    case R.id.militaryButton:
+                    case R.id.military_button:
                         intent.setData(Uri.parse("tel:03-2805666"));
                         break;
-                    case R.id.frontSecurityButton:
+                    case R.id.front_security_button:
                         intent.setData(Uri.parse("tel:03-4227151%2357119"));
                         break;
-                    case R.id.backSecurityButton:
+                    case R.id.back_security_button:
                         intent.setData(Uri.parse("tel:03-4227151%2357319"));
                         break;
-                    case R.id.healthButton:
+                    case R.id.health_button:
                         intent.setData(Uri.parse("tel:03-4227151%2357270"));
                         break;
                     default:
@@ -99,7 +100,7 @@ public class MyActivity extends Activity {
 
 
         //settings of query options
-        gridView = (GridView) findViewById(R.id.gridView);
+        gridView = (GridView) findViewById(R.id.grid_view);
         gridView.setAdapter(new ImageAdapter(this, isSelected));
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -121,7 +122,7 @@ public class MyActivity extends Activity {
 
 
         //list view of query suggestions
-        suggestionList = (ListView) findViewById(R.id.listView);
+        suggestionList = (ListView) findViewById(R.id.list_view);
         AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView parent, View v, int position, long id) {
                 // Do something in response to the click
@@ -132,8 +133,6 @@ public class MyActivity extends Activity {
         };
         suggestionList.setOnItemClickListener(mMessageClickedHandler);
         suggestionList.setBackgroundColor(Color.parseColor("#222222"));
-
-
     }
 
     @Override
@@ -148,6 +147,24 @@ public class MyActivity extends Activity {
         if (submitItem != null)
             submitItem.setVisible(false);
         ((ImageAdapter) gridView.getAdapter()).notifyDataSetChanged();
+
+
+        //check network status
+        NetworkInfo networkInfo = ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+        if (networkInfo == null || !networkInfo.isConnected() || !networkInfo.isAvailable()) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setIcon(R.drawable.ic_launcher);
+            builder.setTitle(R.string.network_unreachable);
+            builder.setMessage(R.string.open_network_message);
+            builder.setNegativeButton(R.string.cancel, null);
+            builder.setPositiveButton(R.string.network_settings, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    startActivityForResult(new Intent(Settings.ACTION_SETTINGS), 2);
+                }
+            });
+            builder.show();
+        }
     }
 
     /**

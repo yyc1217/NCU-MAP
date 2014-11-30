@@ -8,12 +8,12 @@
     <ListView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/listView" />
+        android:id="@+id/list_view" />
 
     <GridView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:id="@+id/gridView"
+        android:id="@+id/grid_view"
         android:columnWidth="80dp"
         android:stretchMode="columnWidth"
         android:gravity="center"
@@ -41,7 +41,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/militaryButton"
+            android:id="@+id/military_button"
             android:text="@string/military_education_office"
             style="?android:buttonBarButtonStyle"/>
 
@@ -49,7 +49,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/frontSecurityButton"
+            android:id="@+id/front_security_button"
             android:text="@string/front_security_post"
             style="?android:buttonBarButtonStyle"/>
 
@@ -57,7 +57,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/backSecurityButton"
+            android:id="@+id/back_security_button"
             android:text="@string/back_security_post"
             style="?android:buttonBarButtonStyle"/>
 
@@ -65,7 +65,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:id="@+id/healthButton"
+            android:id="@+id/health_button"
             android:text="@string/healthCenter"
             style="?android:buttonBarButtonStyle"/>
     </LinearLayout>
