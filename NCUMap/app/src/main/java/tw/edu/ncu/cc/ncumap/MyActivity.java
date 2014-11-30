@@ -15,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SearchView;
@@ -42,7 +43,7 @@ public class MyActivity extends Activity {
     private ListView suggestionList;
     private SearchView searchView;
     private MenuItem submitItem;
-    private Drawable buttonBackground;
+    private GridView gridView;
 
     private int selectNumber = 0;
 
@@ -56,6 +57,7 @@ public class MyActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
 
+        //buttons of emergency numbers
         Button militaryCall = (Button) findViewById(R.id.militaryButton);
         Button frontSecurityCall = (Button) findViewById(R.id.frontSecurityButton);
         Button backSecurityCall = (Button) findViewById(R.id.backSecurityButton);
@@ -89,82 +91,36 @@ public class MyActivity extends Activity {
         healthButton.setOnClickListener(callListener);
 
 
+        //get a ncu location client
         LocationConfig locationConfig;
         locationConfig = new NCULocationConfig();
         locationConfig.setServerAddress("http://140.115.3.97/location");
-
         locationClient = new NCUAsyncLocationClient(locationConfig, this);
 
-        /*GridView gridview = (GridView) findViewById(R.id.gridView);
-        gridview.setAdapter(new ImageAdapter(this));
 
-        gridview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        //settings of query options
+        gridView = (GridView) findViewById(R.id.gridView);
+        gridView.setAdapter(new ImageAdapter(this, isSelected));
+        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (selectNumber == 0) {
                     isSelected[position] = !isSelected[position];
                     openMap();
-                }
-                else {
+                } else {
                     selectView(view, position);
                 }
             }
         });
-
-        gridview.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        gridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
                 selectView(view, position);
                 return true;
             }
-        });*/
-
-        LinearLayout linearLayoutV = (LinearLayout) findViewById(R.id.grid_vertical);
-        View.OnClickListener onClickListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                int position = v.getId() - 1;
-                if (selectNumber == 0) {
-                    isSelected[position] = !isSelected[position];
-                    openMap();
-                }
-                else
-                    selectView(v, position);
-            }
-        };
-        View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                selectView(v, v.getId() - 1);
-                return true;
-            }
-        };
-        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        buttonParams.setMargins(5, 5, 5, 5);
-        for (int i = 0; i != 4; ++i) {
-            LinearLayout linearLayoutH = new LinearLayout(this);
-            linearLayoutH.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-            linearLayoutH.setOrientation(LinearLayout.HORIZONTAL);
-            for (int j = 0; j != 4; ++j) {
-                if (i * 4 + j >= 15) {
-                    View view = new View(this);
-                    view.setLayoutParams(buttonParams);
-                    linearLayoutH.addView(view);
-                    continue;
-                }
-                Button button = new Button(this);
-                button.setText(QUERY_OPTIONS_TC[i * 4 + j]);
-                button.setLayoutParams(buttonParams);
-                button.setId(i * 4 + j + 1);
-                button.setOnClickListener(onClickListener);
-                button.setOnLongClickListener(onLongClickListener);
-                linearLayoutH.addView(button);
-            }
-            linearLayoutV.addView(linearLayoutH);
-        }
-        buttonBackground = new Button(this).getBackground();
+        });
 
 
-        //query suggestoin listview
+        //list view of query suggestions
         suggestionList = (ListView) findViewById(R.id.listView);
         AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView parent, View v, int position, long id) {
@@ -183,17 +139,22 @@ public class MyActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+
+        //initialize
         Arrays.fill(isSelected, false);
         word = null;
         selectedQueryOptions = new ArrayList<QueryData>();
         selectNumber = 0;
-        for (int i = 1; i < 16; ++i)
-            ((Button) findViewById(i)).setBackground(buttonBackground);
         if (submitItem != null)
             submitItem.setVisible(false);
+        ((ImageAdapter) gridView.getAdapter()).notifyDataSetChanged();
     }
 
-
+    /**
+     * select view in position
+     * @param view the view selected
+     * @param position where the view is
+     */
     private void selectView(View view, int position) {
         isSelected[position] = !isSelected[position];
         if (isSelected[position]) {
@@ -204,12 +165,15 @@ public class MyActivity extends Activity {
         }
         else {
             selectNumber--;
-            view.setBackground(buttonBackground);
+            view.setBackgroundColor(Color.parseColor("#00000000"));
             if (selectNumber == 0)
                 submitItem.setVisible(false);
         }
     }
 
+    /**
+     * open map
+     */
     private void openMap() {
         for(int i=0;i<isSelected.length;i++){
             if(isSelected[i]) {
@@ -322,6 +286,7 @@ public class MyActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 }
+
 
 class QueryData {
     private PlaceType placeType;

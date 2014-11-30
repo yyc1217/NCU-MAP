@@ -2,6 +2,7 @@ package tw.edu.ncu.cc.ncumap;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -14,12 +15,20 @@ import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
+import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
@@ -125,6 +134,7 @@ public class MapsActivity extends FragmentActivity {
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
+        MapsInitializer.initialize(this);
         mMap.setMyLocationEnabled(true);
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         String provider = locationManager.getBestProvider(new Criteria(), true);
@@ -158,17 +168,30 @@ public class MapsActivity extends FragmentActivity {
                 NCUMarker ncuMarker = markers.get(marker.getId());
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
-                TextView message = (TextView) getLayoutInflater().inflate(R.layout.dialog_content, null);
-                message.setText("目前沒有可以顯示的資訊");
+                View message = null;
                 switch (ncuMarker.getWordType()) {
                     case PERSON:
                         Person person = (Person) ncuMarker.getObject();
+                        message = getLayoutInflater().inflate(R.layout.dialog_content, null);
+                        ((TextView) message).setMovementMethod(LinkMovementMethod.getInstance());
+                        ((TextView) message).setText(Html.fromHtml("<a href=\"" + person.getPrimaryUnit().getUrl() + "\">"
+                                + person.getPrimaryUnit().getChineseName() + " " + person.getPrimaryUnit().getEnglishName() + "</a>"));
+                        if (person.getSecondaryUnit() != null)
+                            ((TextView) message).append(Html.fromHtml("<br /><a href=\"" + person.getSecondaryUnit().getUrl() + "\">"
+                                + person.getSecondaryUnit().getChineseName() + " " + person.getSecondaryUnit().getEnglishName() + "</a>"));
                         break;
                     case PLACE:
                         Place place = (Place) ncuMarker.getObject();
+                        message = new ImageView(MapsActivity.this);
+                        getNetImage((ImageView) message, place.getPictureName());
                         break;
                     case UNIT:
                         Unit unit = (Unit) ncuMarker.getObject();
+                        message = getLayoutInflater().inflate(R.layout.dialog_content, null);
+                        if (unit.getUrl() != null)
+                            ((TextView) message).setText(Html.fromHtml("<a href\"" + unit.getUrl() + "\">單位網站</a>"));
+                        else
+                            ((TextView) message).setText("目前沒有可顯示的資訊");
                         break;
                 }
                 builder.setView(message);
@@ -179,10 +202,14 @@ public class MapsActivity extends FragmentActivity {
     }
 
     private void moveToLocation(Location location) {
+        if (location == null) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(ncuLocation, 17));
+            return;
+        }
         LatLng myLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         float[] result = new float[3];
         Location.distanceBetween(myLatLng.latitude, myLatLng.longitude, ncuLocation.latitude, ncuLocation.longitude, result);
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(result[0] > 20000 ? ncuLocation : myLatLng, 17));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result[0] > 20000 ? ncuLocation : myLatLng, 17));
         Log.w("Distance", String.valueOf(result[0]));
     }
 
@@ -228,6 +255,21 @@ public class MapsActivity extends FragmentActivity {
                     }
                 });
         }
+    }
+
+    private void getNetImage(final ImageView imageView, String url) {
+        ImageRequest imageRequest = new ImageRequest(url, new Response.Listener<Bitmap>() {
+            @Override
+            public void onResponse(Bitmap response) {
+                imageView.setImageBitmap(response);
+            }
+        }, 0, 0, null, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                imageView.setImageResource(R.drawable.nashi);
+            }
+        });
+        locationClient.getQueue().add(imageRequest);
     }
 
     private void setPlaces(List<Place> places, float iconColor) {
