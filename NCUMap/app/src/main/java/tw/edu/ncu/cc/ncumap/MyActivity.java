@@ -216,6 +216,8 @@ public class MyActivity extends Activity {
         searchView =
                 (SearchView) searchItem.getActionView();
         if (null != searchView) {
+            searchView.setQueryHint(getString(R.string.query_hint));
+
             searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 public boolean onQueryTextChange(String newText) {
                     if (word != null && word.getWord().equals(newText))

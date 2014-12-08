@@ -14,5 +14,8 @@
     <string name="open_network_message">您必須要有網路連線，才能使用中大地圖，請至設定中開啟行動網路或是Wi-Fi。</string>
     <string name="cancel">取消</string>
     <string name="network_settings">設定</string>
+    <string name="query_hint">請輸入人名或單位名稱</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
 
 </resources>

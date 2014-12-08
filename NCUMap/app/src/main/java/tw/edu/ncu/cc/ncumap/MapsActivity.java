@@ -3,29 +3,25 @@ package tw.edu.ncu.cc.ncumap;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
-import android.test.suitebuilder.annotation.LargeTest;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
-import android.text.util.Linkify;
 import android.util.Log;
 import android.view.View;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapsInitializer;
@@ -39,10 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import tw.edu.ncu.cc.location.client.tool.config.LocationConfig;
-import tw.edu.ncu.cc.location.client.tool.config.NCULocationConfig;
 import tw.edu.ncu.cc.location.client.tool.response.ResponseListener;
 import tw.edu.ncu.cc.location.client.volley.NCUAsyncLocationClient;
 import tw.edu.ncu.cc.location.data.keyword.Word;
@@ -55,11 +48,13 @@ import tw.edu.ncu.cc.location.data.unit.Unit;
 /**
  * Created by Tatsujin on 2014/10/6.
  */
-public class MapsActivity extends FragmentActivity {
+public class MapsActivity extends ActionBarActivity
+        implements NavigationDrawerFragment.NavigationDrawerCallbacks {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private NCUAsyncLocationClient locationClient;
     private Map<String, NCUMarker> markers;
+    private NavigationDrawerFragment mNavigationDrawerFragment;
 
     private final LatLng ncuLocation = new LatLng(24.968297, 121.192151);
 
@@ -67,6 +62,20 @@ public class MapsActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
+        mNavigationDrawerFragment = (NavigationDrawerFragment)
+                getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
+
+        ArrayList<NCUItem> navigationItems = new ArrayList<>();
+        for (QueryData queryData : MyActivity.selectedQueryOptions) {
+            navigationItems.add(new NCUItem(queryData.getPlaceTypeTC(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
+        }
+
+        // Set up the drawer.
+        mNavigationDrawerFragment.setUp(
+                R.id.navigation_drawer,
+                (DrawerLayout) findViewById(R.id.drawer_layout),
+                navigationItems);
 
         markers = new HashMap<String, NCUMarker>();
         locationClient = MyActivity.locationClient;
@@ -76,6 +85,7 @@ public class MapsActivity extends FragmentActivity {
 
         if (MyActivity.word != null)
             setWord(MyActivity.word);
+
         for (final QueryData queryData : MyActivity.selectedQueryOptions) {
             Log.w("PlaceType", queryData.getPlaceType().value());
             locationClient.getPlaces(queryData.getPlaceType(), new ResponseListener<Place>() {
@@ -166,10 +176,22 @@ public class MapsActivity extends FragmentActivity {
         else
             moveToLocation(null);
 
-        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
-            public void onInfoWindowClick(Marker marker) {
+            public boolean onMarkerClick(Marker marker) {
                 NCUMarker ncuMarker = markers.get(marker.getId());
+                if (ncuMarker.getWordType().equals(WordType.PLACE)) {
+                    Place place = (Place) ncuMarker.getObject();
+                    if (place.getType().equals(PlaceType.AED) || place.getType().equals(PlaceType.EMERGENCY)) {
+                        Location location = mMap.getMyLocation();
+                        Intent intent = new Intent(android.content.Intent.ACTION_VIEW,
+                                Uri.parse("http://maps.google.com/maps?saddr=" + location.getLatitude() + "," + location.getLongitude() + "&daddr=" + marker.getPosition().latitude + "," + marker.getPosition().longitude + "&dirflg=w"));
+                        startActivity(intent);
+                        return true;
+                    }
+                    if (!place.getType().equals(PlaceType.SPORT_RECREATION))
+                        return false;
+                }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
                 View message = null;
@@ -182,7 +204,7 @@ public class MapsActivity extends FragmentActivity {
                                 + person.getPrimaryUnit().getChineseName() + " " + person.getPrimaryUnit().getEnglishName() + "</a>"));
                         if (person.getSecondaryUnit() != null)
                             ((TextView) message).append(Html.fromHtml("<br /><a href=\"" + person.getSecondaryUnit().getUrl() + "\">"
-                                + person.getSecondaryUnit().getChineseName() + " " + person.getSecondaryUnit().getEnglishName() + "</a>"));
+                                    + person.getSecondaryUnit().getChineseName() + " " + person.getSecondaryUnit().getEnglishName() + "</a>"));
                         break;
                     case PLACE:
                         Place place = (Place) ncuMarker.getObject();
@@ -192,8 +214,9 @@ public class MapsActivity extends FragmentActivity {
                     case UNIT:
                         Unit unit = (Unit) ncuMarker.getObject();
                         message = getLayoutInflater().inflate(R.layout.dialog_content, null);
+                        ((TextView) message).setMovementMethod(LinkMovementMethod.getInstance());
                         if (unit.getUrl() != null)
-                            ((TextView) message).setText(Html.fromHtml("<a href\"" + unit.getUrl() + "\">單位網站</a>"));
+                            ((TextView) message).setText(Html.fromHtml("<a href=\"" + unit.getUrl() + "\">單位網站</a>"));
                         else
                             ((TextView) message).setText("目前沒有可顯示的資訊");
                         break;
@@ -201,6 +224,7 @@ public class MapsActivity extends FragmentActivity {
                 builder.setView(message);
                 builder.setNegativeButton(R.string.close, null);
                 builder.show();
+                return true;
             }
         });
     }
@@ -283,7 +307,7 @@ public class MapsActivity extends FragmentActivity {
                     .title(place.getChineseName())
                     .snippet(place.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(iconColor * 19)));
-            markers.put(marker.getId(), new NCUMarker(WordType.PLACE, place));
+            markers.put(marker.getId(), new NCUMarker(WordType.PLACE, place, marker));
         }
     }
 
@@ -296,7 +320,7 @@ public class MapsActivity extends FragmentActivity {
                     .title(unit.getFullName())
                     .snippet(unit.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(323)));
-            markers.put(marker.getId(), new NCUMarker(WordType.UNIT, unit));
+            markers.put(marker.getId(), new NCUMarker(WordType.UNIT, unit, marker));
         }
     }
 
@@ -309,7 +333,19 @@ public class MapsActivity extends FragmentActivity {
                     .title(person.getChineseName())
                     .snippet(person.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(342)));
-            markers.put(marker.getId(), new NCUMarker(WordType.PERSON, person));
+            markers.put(marker.getId(), new NCUMarker(WordType.PERSON, person, marker));
+        }
+    }
+
+    @Override
+    public void onNavigationDrawerItemSelected(int position, boolean selected) {
+        PlaceType placeType = MyActivity.selectedQueryOptions.get(position).getPlaceType();
+        for (NCUMarker ncuMarker : markers.values()) {
+            if (ncuMarker.getWordType().equals(WordType.PLACE)) {
+                if (((Place) ncuMarker.getObject()).getType().equals(placeType)) {
+                    ncuMarker.getMarker().setVisible(selected);
+                }
+            }
         }
     }
 }
@@ -317,10 +353,12 @@ public class MapsActivity extends FragmentActivity {
 class NCUMarker {
     private WordType wordType;
     private Object object;
+    private Marker marker;
 
-    public NCUMarker (WordType wordType, Object object) {
+    public NCUMarker(WordType wordType, Object object, Marker marker) {
         this.wordType = wordType;
         this.object = object;
+        this.marker = marker;
     }
 
     public WordType getWordType() {
@@ -329,5 +367,13 @@ class NCUMarker {
 
     public Object getObject() {
         return object;
+    }
+
+    public Marker getMarker() {
+        return marker;
+    }
+
+    public void setMarker(Marker marker) {
+        this.marker = marker;
     }
 }
