@@ -53,8 +53,11 @@ public class MapsActivity extends ActionBarActivity
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private NCUAsyncLocationClient locationClient;
-    private Map<String, NCUMarker> markers;
+    private Map<String, NCUMarker> idMarkerMap;
+    private Map<PlaceType, ArrayList<NCUMarker>> typeMarkersMap;
     private NavigationDrawerFragment mNavigationDrawerFragment;
+
+    private Map<PlaceType, ArrayList<String>> navigationExpandItems;
 
     private final LatLng ncuLocation = new LatLng(24.968297, 121.192151);
 
@@ -66,19 +69,25 @@ public class MapsActivity extends ActionBarActivity
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
 
-        ArrayList<NCUItem> navigationItems = new ArrayList<>();
+        idMarkerMap = new HashMap<>();
+        typeMarkersMap = new HashMap<>();
+        locationClient = MyActivity.locationClient;
+
+        ArrayList<PlaceTypeItem> navigationItems = new ArrayList<>();
+        navigationExpandItems = new HashMap<>();
         for (QueryData queryData : MyActivity.selectedQueryOptions) {
-            navigationItems.add(new NCUItem(queryData.getPlaceTypeTC(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
+            navigationItems.add(new PlaceTypeItem(queryData.getPlaceTypeTC(), queryData.getPlaceType(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
+            if (queryData.isNeedList())
+                navigationExpandItems.put(queryData.getPlaceType(), new ArrayList<String>());
+            typeMarkersMap.put(queryData.getPlaceType(), new ArrayList<NCUMarker>());
         }
+
 
         // Set up the drawer.
         mNavigationDrawerFragment.setUp(
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout),
-                navigationItems);
-
-        markers = new HashMap<String, NCUMarker>();
-        locationClient = MyActivity.locationClient;
+                navigationItems, navigationExpandItems);
 
 
         setUpMapIfNeeded();
@@ -179,7 +188,7 @@ public class MapsActivity extends ActionBarActivity
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                NCUMarker ncuMarker = markers.get(marker.getId());
+                NCUMarker ncuMarker = idMarkerMap.get(marker.getId());
                 if (ncuMarker.getWordType().equals(WordType.PLACE)) {
                     Place place = (Place) ncuMarker.getObject();
                     if (place.getType().equals(PlaceType.AED) || place.getType().equals(PlaceType.EMERGENCY)) {
@@ -231,13 +240,13 @@ public class MapsActivity extends ActionBarActivity
 
     private void moveToLocation(Location location) {
         if (location == null) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(ncuLocation, 17));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(ncuLocation, 15));
             return;
         }
         LatLng myLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         float[] result = new float[3];
         Location.distanceBetween(myLatLng.latitude, myLatLng.longitude, ncuLocation.latitude, ncuLocation.longitude, result);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result[0] > 20000 ? ncuLocation : myLatLng, 17));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result[0] > 20000 ? ncuLocation : myLatLng, 15));
         Log.w("Distance", String.valueOf(result[0]));
     }
 
@@ -307,7 +316,12 @@ public class MapsActivity extends ActionBarActivity
                     .title(place.getChineseName())
                     .snippet(place.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(iconColor * 19)));
-            markers.put(marker.getId(), new NCUMarker(WordType.PLACE, place, marker));
+            NCUMarker ncuMarker = new NCUMarker(WordType.PLACE, place, marker);
+            idMarkerMap.put(marker.getId(), ncuMarker);
+            typeMarkersMap.get(place.getType()).add(ncuMarker);
+            ArrayList<String> items = navigationExpandItems.get(place.getType());
+            if (items != null)
+                items.add(place.getChineseName());
         }
     }
 
@@ -320,7 +334,7 @@ public class MapsActivity extends ActionBarActivity
                     .title(unit.getFullName())
                     .snippet(unit.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(323)));
-            markers.put(marker.getId(), new NCUMarker(WordType.UNIT, unit, marker));
+            idMarkerMap.put(marker.getId(), new NCUMarker(WordType.UNIT, unit, marker));
         }
     }
 
@@ -333,20 +347,23 @@ public class MapsActivity extends ActionBarActivity
                     .title(person.getChineseName())
                     .snippet(person.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(342)));
-            markers.put(marker.getId(), new NCUMarker(WordType.PERSON, person, marker));
+            idMarkerMap.put(marker.getId(), new NCUMarker(WordType.PERSON, person, marker));
         }
     }
 
     @Override
     public void onNavigationDrawerItemSelected(int position, boolean selected) {
         PlaceType placeType = MyActivity.selectedQueryOptions.get(position).getPlaceType();
-        for (NCUMarker ncuMarker : markers.values()) {
-            if (ncuMarker.getWordType().equals(WordType.PLACE)) {
-                if (((Place) ncuMarker.getObject()).getType().equals(placeType)) {
-                    ncuMarker.getMarker().setVisible(selected);
-                }
-            }
-        }
+        for (NCUMarker ncuMarker : typeMarkersMap.get(placeType))
+            ncuMarker.getMarker().setVisible(selected);
+    }
+
+    @Override
+    public void onNavigationDrawerExpandItemSelected(int position, int which) {
+        PlaceType placeType = MyActivity.selectedQueryOptions.get(position).getPlaceType();
+        Marker marker = typeMarkersMap.get(placeType).get(which).getMarker();
+        LatLng latLng = marker.getPosition();
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
     }
 }
 

@@ -1,7 +1,6 @@
 package tw.edu.ncu.cc.ncumap;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.support.v7.app.ActionBar;
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -20,15 +19,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+
+import tw.edu.ncu.cc.location.data.place.PlaceType;
 
 /**
  * Created by tatsujin on 14/12/8.
  */
-public class NavigationDrawerFragment extends Fragment implements ListAdapter.OnSelectItemListener {
+public class NavigationDrawerFragment extends Fragment implements ListAdapter.OnItemSelectedListener, ListAdapter.OnExpandItemSelectedListener {
 
     /**
      * Remember the position of the selected item.
@@ -97,13 +102,13 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
      * @param fragmentId   The android:id of this fragment in its activity's layout.
      * @param drawerLayout The DrawerLayout containing this fragment's UI.
      */
-    public void setUp(int fragmentId, DrawerLayout drawerLayout, ArrayList<NCUItem> items) {
+    public void setUp(int fragmentId, DrawerLayout drawerLayout, ArrayList<PlaceTypeItem> items, Map<PlaceType, ArrayList<String>> expandItems) {
 
         Boolean[] addToIsItemSelected = new Boolean[items.size()];
         Arrays.fill(addToIsItemSelected, true);
         isItemSelected = new ArrayList<>(Arrays.asList(addToIsItemSelected));
 
-        mDrawerListAdapter = new ListAdapter(getActivity(), items, isItemSelected, this);
+        mDrawerListAdapter = new ListAdapter(getActivity(), items, expandItems, isItemSelected, this, this);
         mDrawerListView.setAdapter(mDrawerListAdapter);
 
         for (int i = 0; i != items.size(); ++i) {
@@ -177,7 +182,7 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
         mDrawerLayout.setDrawerListener(mDrawerToggle);
     }
 
-    public void selectItem(int position) {
+    public void onItemSelected(int position) {
         boolean selected = !isItemSelected.get(position);
         isItemSelected.set(position, selected);
         if (mDrawerListView != null) {
@@ -187,6 +192,13 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
             mCallbacks.onNavigationDrawerItemSelected(position, selected);
         }
         Log.w("position " + position, String.valueOf(isItemSelected.get(position)));
+    }
+
+    @Override
+    public void onExpandItemSelected(int position, int which) {
+        if (mDrawerLayout != null)
+            mDrawerLayout.closeDrawer(mFragmentContainerView);
+        mCallbacks.onNavigationDrawerExpandItemSelected(position, which);
     }
 
     @Override
@@ -230,25 +242,37 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
          * Called when an item in the navigation drawer is selected.
          */
         void onNavigationDrawerItemSelected(int position, boolean selected);
+        void onNavigationDrawerExpandItemSelected(int position, int which);
     }
 }
 
 class ListAdapter extends BaseAdapter {
 
-    interface OnSelectItemListener {
-        public void selectItem(int position);
+    interface OnItemSelectedListener {
+        public void onItemSelected(int position);
     }
 
-    private ArrayList<NCUItem> items;
+    interface OnExpandItemSelectedListener {
+        public void onExpandItemSelected(int position, int which);
+    }
+
+    private ArrayList<PlaceTypeItem> items;
+    private Map<PlaceType, ArrayList<String>> expandItemsMap;
     private Context context;
     private ArrayList<Boolean> isItemSelected;
-    private OnSelectItemListener onSelectItemListener;
+    private OnItemSelectedListener onItemSelectedListener;
+    private OnExpandItemSelectedListener onExpandItemSelectedListener;
+    private boolean[] isExpand;
 
-    public ListAdapter(Context context, ArrayList<NCUItem> items, ArrayList<Boolean> isItemSelected, OnSelectItemListener onSelectItemListener) {
+    public ListAdapter(Context context, ArrayList<PlaceTypeItem> items, Map<PlaceType, ArrayList<String>> expandItemsMap, ArrayList<Boolean> isItemSelected, OnItemSelectedListener onItemSelectedListener, OnExpandItemSelectedListener onExpandItemSelectedListener) {
         this.context = context;
         this.items = items;
+        this.expandItemsMap = expandItemsMap;
         this.isItemSelected = isItemSelected;
-        this.onSelectItemListener = onSelectItemListener;
+        this.onItemSelectedListener = onItemSelectedListener;
+        this.onExpandItemSelectedListener = onExpandItemSelectedListener;
+        isExpand = new boolean[items.size()];
+        Arrays.fill(isExpand, false);
     }
 
     @Override
@@ -268,29 +292,91 @@ class ListAdapter extends BaseAdapter {
 
     @Override
     public View getView(final int position, View convertView, ViewGroup parent) {
-        if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.navigation_list_item, parent, false);
+        final ArrayList<String> expandItems = expandItemsMap.get(items.get(position).getPlaceType());
+        CheckBox checkBox;
+        if (expandItems != null) {
+            convertView = LayoutInflater.from(context).inflate(R.layout.navigation_expand_item, parent, false);
+            final LinearLayout linearLayout = (LinearLayout) ((LinearLayout) convertView).getChildAt(0);
+            checkBox = (CheckBox) linearLayout.getChildAt(0);
+            final ImageView imageView = (ImageView) linearLayout.getChildAt(1);
+            imageView.setImageResource(isExpand[position] ? R.drawable.ic_action_expand : R.drawable.ic_action_collapse);
+            final LinearLayout finalConvertView = (LinearLayout) convertView;
+            if (isExpand[position]) {
+                int i = 0;
+                for (String expandItem : expandItems) {
+                    TextView expandTextView = (TextView) LayoutInflater.from(context).inflate(R.layout.navigation_expand_list_item, (LinearLayout) finalConvertView, false);
+                    expandTextView.setText(expandItem);
+                    expandTextView.setVisibility(isExpand[position] ? View.VISIBLE : View.GONE);
+                    final int finalI = i;
+                    expandTextView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (onExpandItemSelectedListener != null)
+                                onExpandItemSelectedListener.onExpandItemSelected(position, finalI);
+                        }
+                    });
+                    finalConvertView.addView(expandTextView);
+                    ++i;
+                }
+            }
+            linearLayout.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    isExpand[position] = !isExpand[position];
+                    imageView.setImageResource(isExpand[position] ? R.drawable.ic_action_expand : R.drawable.ic_action_collapse);
+                    if (isExpand[position]) {
+                        int i = 0;
+                        for (String expandItem : expandItems) {
+                            TextView expandTextView = (TextView) LayoutInflater.from(context).inflate(R.layout.navigation_expand_list_item, (LinearLayout) finalConvertView, false);
+                            expandTextView.setText(expandItem);
+                            expandTextView.setVisibility(isExpand[position] ? View.VISIBLE : View.GONE);
+                            final int finalI = i;
+                            expandTextView.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    if (onExpandItemSelectedListener != null)
+                                        onExpandItemSelectedListener.onExpandItemSelected(position, finalI);
+                                }
+                            });
+                            finalConvertView.addView(expandTextView);
+                            ++i;
+                        }
+                    }
+                    else {
+                        finalConvertView.removeAllViews();
+                        finalConvertView.addView(linearLayout);
+                    }
+
+                }
+            });
         }
-        ((CheckBox) convertView).setText(items.get(position).getName());
-        ((CheckBox) convertView).setTextColor(items.get(position).getColor());
-        ((CheckBox) convertView).setChecked(isItemSelected.get(position));
-        ((CheckBox) convertView).setOnClickListener(new View.OnClickListener() {
+        else {
+            convertView = LayoutInflater.from(context).inflate(R.layout.navigation_list_item, parent, false);
+            checkBox = (CheckBox) convertView;
+        }
+        checkBox.setText(items.get(position).getName());
+        checkBox.setTextColor(items.get(position).getColor());
+        checkBox.setChecked(isItemSelected.get(position));
+        checkBox.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onSelectItemListener.selectItem(position);
+                onItemSelectedListener.onItemSelected(position);
             }
         });
         return convertView;
     }
 }
 
-class NCUItem {
+class PlaceTypeItem {
 
     String name;
+    PlaceType placeType;
     int color;
 
-    NCUItem(String name, int color) {
+
+    PlaceTypeItem(String name, PlaceType placeType, int color) {
         this.name = name;
+        this.placeType = placeType;
         this.color = color;
     }
 
@@ -308,5 +394,13 @@ class NCUItem {
 
     public void setColor(int color) {
         this.color = color;
+    }
+
+    public PlaceType getPlaceType() {
+        return placeType;
+    }
+
+    public void setPlaceType(PlaceType placeType) {
+        this.placeType = placeType;
     }
 }

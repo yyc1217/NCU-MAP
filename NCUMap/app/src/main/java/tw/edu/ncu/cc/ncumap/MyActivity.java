@@ -38,6 +38,7 @@ public class MyActivity extends Activity {
 
     private static final String[] QUERY_OPTIONS = {"WHEELCHAIR_RAMP", "DISABLED_CAR_PARKING", "DISABLED_MOTOR_PARKING", "EMERGENCY", "AED", "RESTAURANT", "SPORT_RECREATION", "ADMINISTRATION", "RESEARCH", "DORMITORY", "OTHER", "TOILET", "ATM", "BUS_STATION", "PARKING_LOT"};
     private static final String[] QUERY_OPTIONS_TC = {"無障礙坡道", "無障礙汽車位", "無障礙機車位", "緊急", "AED", "餐廳", "休閒生活", "行政服務", "教學研究", "宿舍", "其他單位", "廁所", "提款機", "公車站牌", "停車場"};
+    private boolean[] needList = {false, false, false, false, false, true, true, true, true, true, true, false, false, false, false};
     private boolean[] isSelected = new boolean[15];
     private Word[] searchSuggestions;
     private String[] searchSuggestionToString;
@@ -92,7 +93,7 @@ public class MyActivity extends Activity {
         healthButton.setOnClickListener(callListener);
 
 
-        //get a ncu location client
+        //create a ncu location client
         LocationConfig locationConfig;
         locationConfig = new NCULocationConfig();
         locationConfig.setServerAddress("http://140.115.3.97/location");
@@ -194,7 +195,7 @@ public class MyActivity extends Activity {
     private void openMap() {
         for(int i=0;i<isSelected.length;i++){
             if(isSelected[i]) {
-                selectedQueryOptions.add(new QueryData(PlaceType.fromValue(QUERY_OPTIONS[i]), QUERY_OPTIONS_TC[i], i));
+                selectedQueryOptions.add(new QueryData(PlaceType.fromValue(QUERY_OPTIONS[i]), QUERY_OPTIONS_TC[i], needList[i], i));
             }
         }
         Intent mapsActivity = new Intent(MyActivity.this, MapsActivity.class);
@@ -310,11 +311,13 @@ public class MyActivity extends Activity {
 class QueryData {
     private PlaceType placeType;
     private String placeTypeTC;
+    private boolean needList;
     private int num;
 
-    public QueryData(PlaceType placeType, String placeTypeTC, int num) {
+    public QueryData(PlaceType placeType, String placeTypeTC, boolean needList, int num) {
         this.placeType = placeType;
         this.placeTypeTC = placeTypeTC;
+        this.needList = needList;
         this.num = num;
     }
 
@@ -340,5 +343,9 @@ class QueryData {
 
     public void setNum(int num) {
         this.num = num;
+    }
+
+    public boolean isNeedList() {
+        return needList;
     }
 }
