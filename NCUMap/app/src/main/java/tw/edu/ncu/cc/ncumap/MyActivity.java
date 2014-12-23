@@ -143,11 +143,13 @@ public class MyActivity extends Activity {
         //initialize
         Arrays.fill(isSelected, false);
         word = null;
-        selectedQueryOptions = new ArrayList<QueryData>();
+        selectedQueryOptions = new ArrayList<>();
         selectNumber = 0;
         if (submitItem != null)
             submitItem.setVisible(false);
         ((ImageAdapter) gridView.getAdapter()).notifyDataSetChanged();
+        if (searchView != null)
+            searchView.setQuery("", false);
 
 
         //check network status

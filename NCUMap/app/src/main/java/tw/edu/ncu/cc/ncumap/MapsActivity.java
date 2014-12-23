@@ -53,9 +53,14 @@ public class MapsActivity extends ActionBarActivity
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private NCUAsyncLocationClient locationClient;
-    private Map<String, NCUMarker> idMarkerMap;
-    private Map<PlaceType, ArrayList<NCUMarker>> typeMarkersMap;
     private NavigationDrawerFragment mNavigationDrawerFragment;
+
+    private List<QueryData> queryDatas;
+    private List<Word> words;
+
+    private Map<String, NCUMarker> idMarkerMap;
+    private Map<PlaceType, ArrayList<NCUMarker>> placeTypeMarkersMap;
+    private Map<Word, ArrayList<NCUMarker>> wordMarkersMap;
 
     private Map<PlaceType, ArrayList<String>> navigationExpandItems;
 
@@ -70,16 +75,38 @@ public class MapsActivity extends ActionBarActivity
                 getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
 
         idMarkerMap = new HashMap<>();
-        typeMarkersMap = new HashMap<>();
+        placeTypeMarkersMap = new HashMap<>();
+        wordMarkersMap = new HashMap<>();
         locationClient = MyActivity.locationClient;
+        queryDatas = MyActivity.selectedQueryOptions;
+        words = new ArrayList<>();
 
-        ArrayList<PlaceTypeItem> navigationItems = new ArrayList<>();
+        ArrayList<NavigationListItem> navigationItems = new ArrayList<>();
         navigationExpandItems = new HashMap<>();
-        for (QueryData queryData : MyActivity.selectedQueryOptions) {
-            navigationItems.add(new PlaceTypeItem(queryData.getPlaceTypeTC(), queryData.getPlaceType(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
+        Word word = MyActivity.word;
+        if (word != null) {
+            int color = 0;
+            switch (word.getType()) {
+                case PERSON:
+                    color = 18;
+                    break;
+                case UNIT:
+                    color = 17;
+                    break;
+                case PLACE:
+                    color = 16;
+                    break;
+            }
+            navigationItems.add(new NavigationListItem(word.getWord(), null, Color.HSVToColor(new float[]{color * 19, (float) 0.8, (float) 0.5})));
+            wordMarkersMap.put(word, new ArrayList<NCUMarker>());
+            words.add(word);
+        }
+
+        for (QueryData queryData : queryDatas) {
+            navigationItems.add(new NavigationListItem(queryData.getPlaceTypeTC(), queryData.getPlaceType(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
             if (queryData.isNeedList())
                 navigationExpandItems.put(queryData.getPlaceType(), new ArrayList<String>());
-            typeMarkersMap.put(queryData.getPlaceType(), new ArrayList<NCUMarker>());
+            placeTypeMarkersMap.put(queryData.getPlaceType(), new ArrayList<NCUMarker>());
         }
 
 
@@ -95,7 +122,7 @@ public class MapsActivity extends ActionBarActivity
         if (MyActivity.word != null)
             setWord(MyActivity.word);
 
-        for (final QueryData queryData : MyActivity.selectedQueryOptions) {
+        for (final QueryData queryData : queryDatas) {
             Log.w("PlaceType", queryData.getPlaceType().value());
             locationClient.getPlaces(queryData.getPlaceType(), new ResponseListener<Place>() {
                 @Override
@@ -154,52 +181,35 @@ public class MapsActivity extends ActionBarActivity
      */
     private void setUpMap() {
         MapsInitializer.initialize(this);
+
         mMap.setMyLocationEnabled(true);
+        mMap.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
+            boolean moved = false;
+            @Override
+            public void onMyLocationChange(Location location) {
+                if (!moved) {
+                    moveToLocation(location);
+                    moved = true;
+                }
+            }
+        });
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         String provider = locationManager.getBestProvider(new Criteria(), true);
         if (provider != null) {
             Location location = locationManager.getLastKnownLocation(provider);
             moveToLocation(location);
-            locationManager.requestSingleUpdate(provider, new LocationListener() {
-                @Override
-                public void onLocationChanged(Location location) {
-                    moveToLocation(location);
-                }
-
-                @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) {
-
-                }
-
-                @Override
-                public void onProviderEnabled(String provider) {
-
-                }
-
-                @Override
-                public void onProviderDisabled(String provider) {
-
-                }
-            }, null);
         }
         else
             moveToLocation(null);
 
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
-            public boolean onMarkerClick(Marker marker) {
+            public void onInfoWindowClick(Marker marker) {
                 NCUMarker ncuMarker = idMarkerMap.get(marker.getId());
                 if (ncuMarker.getWordType().equals(WordType.PLACE)) {
                     Place place = (Place) ncuMarker.getObject();
-                    if (place.getType().equals(PlaceType.AED) || place.getType().equals(PlaceType.EMERGENCY)) {
-                        Location location = mMap.getMyLocation();
-                        Intent intent = new Intent(android.content.Intent.ACTION_VIEW,
-                                Uri.parse("http://maps.google.com/maps?saddr=" + location.getLatitude() + "," + location.getLongitude() + "&daddr=" + marker.getPosition().latitude + "," + marker.getPosition().longitude + "&dirflg=w"));
-                        startActivity(intent);
-                        return true;
-                    }
                     if (!place.getType().equals(PlaceType.SPORT_RECREATION))
-                        return false;
+                        return;
                 }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
@@ -233,7 +243,6 @@ public class MapsActivity extends ActionBarActivity
                 builder.setView(message);
                 builder.setNegativeButton(R.string.close, null);
                 builder.show();
-                return true;
             }
         });
     }
@@ -250,14 +259,14 @@ public class MapsActivity extends ActionBarActivity
         Log.w("Distance", String.valueOf(result[0]));
     }
 
-    private void setWord(Word word) {
+    private void setWord(final Word word) {
         WordType type = word.getType();
         switch (type) {
             case PERSON:
                 locationClient.getPeople(word.getWord(), new ResponseListener<Person>() {
                     @Override
                     public void onResponse(List<Person> people) {
-                        setPeople(people);
+                        wordMarkersMap.get(word).addAll(setPeople(people));
                     }
 
                     @Override
@@ -270,7 +279,7 @@ public class MapsActivity extends ActionBarActivity
                 locationClient.getUnits(word.getWord(), new ResponseListener<Unit>() {
                     @Override
                     public void onResponse(List<Unit> units) {
-                        setUnits(units);
+                        wordMarkersMap.get(word).addAll(setUnits(units));
                     }
 
                     @Override
@@ -283,7 +292,7 @@ public class MapsActivity extends ActionBarActivity
                 locationClient.getPlaces(word.getWord(), new ResponseListener<Place>() {
                     @Override
                     public void onResponse(List<Place> places) {
-                        setPlaces(places, 16);
+                        wordMarkersMap.get(word).addAll(setPlaces(places, 16));
                     }
 
                     @Override
@@ -309,7 +318,8 @@ public class MapsActivity extends ActionBarActivity
         locationClient.getQueue().add(imageRequest);
     }
 
-    private void setPlaces(List<Place> places, float iconColor) {
+    private List<NCUMarker> setPlaces(List<Place> places, float iconColor) {
+        List<NCUMarker> markers = new ArrayList<>();
         for (Place place : places) {
             Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(place.getLocation().getLat(), place.getLocation().getLng()))
@@ -318,14 +328,19 @@ public class MapsActivity extends ActionBarActivity
                     .icon(BitmapDescriptorFactory.defaultMarker(iconColor * 19)));
             NCUMarker ncuMarker = new NCUMarker(WordType.PLACE, place, marker);
             idMarkerMap.put(marker.getId(), ncuMarker);
-            typeMarkersMap.get(place.getType()).add(ncuMarker);
+            markers.add(ncuMarker);
+            List<NCUMarker> placeTypeMarkers = placeTypeMarkersMap.get(place.getType());
+            if (iconColor != 16 && placeTypeMarkers != null)
+                placeTypeMarkers.add(ncuMarker);
             ArrayList<String> items = navigationExpandItems.get(place.getType());
-            if (items != null)
+            if (iconColor != 16 && items != null)
                 items.add(place.getChineseName());
         }
+        return markers;
     }
 
-    private void setUnits(List<Unit> units) {
+    private List<NCUMarker> setUnits(List<Unit> units) {
+        List<NCUMarker> markers = new ArrayList<>();
         for (Unit unit : units) {
             if (unit.getLocation() == null)
                 continue;
@@ -334,11 +349,15 @@ public class MapsActivity extends ActionBarActivity
                     .title(unit.getFullName())
                     .snippet(unit.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(323)));
-            idMarkerMap.put(marker.getId(), new NCUMarker(WordType.UNIT, unit, marker));
+            NCUMarker ncuMarker = new NCUMarker(WordType.UNIT, unit, marker);
+            markers.add(ncuMarker);
+            idMarkerMap.put(marker.getId(), ncuMarker);
         }
+        return markers;
     }
 
-    private void setPeople(List<Person> people) {
+    private List<NCUMarker> setPeople(List<Person> people) {
+        List<NCUMarker> markers = new ArrayList<>();
         for (Person person : people) {
             if (person.getPrimaryUnit().getLocation() == null)
                 continue;
@@ -347,21 +366,34 @@ public class MapsActivity extends ActionBarActivity
                     .title(person.getChineseName())
                     .snippet(person.getEnglishName())
                     .icon(BitmapDescriptorFactory.defaultMarker(342)));
-            idMarkerMap.put(marker.getId(), new NCUMarker(WordType.PERSON, person, marker));
+            NCUMarker ncuMarker = new NCUMarker(WordType.PERSON, person, marker);
+            markers.add(ncuMarker);
+            idMarkerMap.put(marker.getId(), ncuMarker);
         }
+        return markers;
     }
 
     @Override
     public void onNavigationDrawerItemSelected(int position, boolean selected) {
-        PlaceType placeType = MyActivity.selectedQueryOptions.get(position).getPlaceType();
-        for (NCUMarker ncuMarker : typeMarkersMap.get(placeType))
-            ncuMarker.getMarker().setVisible(selected);
+        if (position < wordMarkersMap.size()) {
+            Word word = words.get(position);
+            for (NCUMarker ncuMarker : wordMarkersMap.get(word)) {
+                ncuMarker.getMarker().setVisible(selected);
+            }
+        }
+        else {
+            position -= wordMarkersMap.size();
+            PlaceType placeType = queryDatas.get(position).getPlaceType();
+            for (NCUMarker ncuMarker : placeTypeMarkersMap.get(placeType))
+                ncuMarker.getMarker().setVisible(selected);
+        }
     }
 
     @Override
     public void onNavigationDrawerExpandItemSelected(int position, int which) {
-        PlaceType placeType = MyActivity.selectedQueryOptions.get(position).getPlaceType();
-        Marker marker = typeMarkersMap.get(placeType).get(which).getMarker();
+        position -= wordMarkersMap.size();
+        PlaceType placeType = queryDatas.get(position).getPlaceType();
+        Marker marker = placeTypeMarkersMap.get(placeType).get(which).getMarker();
         LatLng latLng = marker.getPosition();
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
     }

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
+import tw.edu.ncu.cc.location.data.keyword.WordType;
 import tw.edu.ncu.cc.location.data.place.PlaceType;
 
 /**
@@ -102,7 +103,7 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
      * @param fragmentId   The android:id of this fragment in its activity's layout.
      * @param drawerLayout The DrawerLayout containing this fragment's UI.
      */
-    public void setUp(int fragmentId, DrawerLayout drawerLayout, ArrayList<PlaceTypeItem> items, Map<PlaceType, ArrayList<String>> expandItems) {
+    public void setUp(int fragmentId, DrawerLayout drawerLayout, ArrayList<NavigationListItem> items, Map<PlaceType, ArrayList<String>> expandItems) {
 
         Boolean[] addToIsItemSelected = new Boolean[items.size()];
         Arrays.fill(addToIsItemSelected, true);
@@ -256,7 +257,7 @@ class ListAdapter extends BaseAdapter {
         public void onExpandItemSelected(int position, int which);
     }
 
-    private ArrayList<PlaceTypeItem> items;
+    private ArrayList<NavigationListItem> items;
     private Map<PlaceType, ArrayList<String>> expandItemsMap;
     private Context context;
     private ArrayList<Boolean> isItemSelected;
@@ -264,7 +265,7 @@ class ListAdapter extends BaseAdapter {
     private OnExpandItemSelectedListener onExpandItemSelectedListener;
     private boolean[] isExpand;
 
-    public ListAdapter(Context context, ArrayList<PlaceTypeItem> items, Map<PlaceType, ArrayList<String>> expandItemsMap, ArrayList<Boolean> isItemSelected, OnItemSelectedListener onItemSelectedListener, OnExpandItemSelectedListener onExpandItemSelectedListener) {
+    public ListAdapter(Context context, ArrayList<NavigationListItem> items, Map<PlaceType, ArrayList<String>> expandItemsMap, ArrayList<Boolean> isItemSelected, OnItemSelectedListener onItemSelectedListener, OnExpandItemSelectedListener onExpandItemSelectedListener) {
         this.context = context;
         this.items = items;
         this.expandItemsMap = expandItemsMap;
@@ -367,14 +368,14 @@ class ListAdapter extends BaseAdapter {
     }
 }
 
-class PlaceTypeItem {
+class NavigationListItem {
 
     String name;
     PlaceType placeType;
     int color;
 
 
-    PlaceTypeItem(String name, PlaceType placeType, int color) {
+    NavigationListItem(String name, PlaceType placeType, int color) {
         this.name = name;
         this.placeType = placeType;
         this.color = color;
