@@ -12,8 +12,10 @@ public interface AsynLocationClient {
     public void getPlaces( String placeName, ResponseListener<Place> responseListener );
     public void getPlaces( PlaceType placeType , ResponseListener<Place> responseListener );
 
+    public void getPlaceUnits( String placeName, ResponseListener<Unit> responseListener );
+
     public void getPeople( String peopleName, ResponseListener<Person> responseListener );
-    public void getUnits ( String unitName, ResponseListener<Unit> responseListener);
+    public void getUnits ( String unitName, ResponseListener<Unit> responseListener );
 
     public void getWords ( String keyword, ResponseListener<Word> responseListener );
 

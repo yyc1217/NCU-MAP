@@ -10,9 +10,9 @@ public class ResponseConverter {
 
     public static <T> List<T> convert( ResultWrapper<T> resultWrapper ) {
         if( resultWrapper.getResult() == null ) {
-            return new LinkedList<T>();
+            return new LinkedList<>();
         } else {
-            return new LinkedList<T>( Arrays.asList( resultWrapper.getResult() ) );
+            return new LinkedList<>( Arrays.asList( resultWrapper.getResult() ) );
         }
     }
 

@@ -17,5 +17,6 @@
     <string name="query_hint">請輸入人名或單位名稱</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="version_name">v0.0.6</string>
 
 </resources>

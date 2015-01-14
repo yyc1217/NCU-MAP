@@ -1,6 +1,5 @@
 package tw.edu.ncu.cc.ncumap;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -11,6 +10,9 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.SearchView;
+import android.telephony.TelephonyManager;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -19,8 +21,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.SearchView;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +37,7 @@ import tw.edu.ncu.cc.location.data.keyword.Word;
 import tw.edu.ncu.cc.location.data.place.PlaceType;
 
 
-public class MyActivity extends Activity {
+public class MyActivity extends ActionBarActivity {
 
     private static final String[] QUERY_OPTIONS = {"WHEELCHAIR_RAMP", "DISABLED_CAR_PARKING", "DISABLED_MOTOR_PARKING", "EMERGENCY", "AED", "RESTAURANT", "SPORT_RECREATION", "ADMINISTRATION", "RESEARCH", "DORMITORY", "OTHER", "TOILET", "ATM", "BUS_STATION", "PARKING_LOT"};
     private static final String[] QUERY_OPTIONS_TC = {"無障礙坡道", "無障礙汽車位", "無障礙機車位", "緊急", "AED", "餐廳", "休閒生活", "行政服務", "教學研究", "宿舍", "其他單位", "廁所", "提款機", "公車站牌", "停車場"};
@@ -59,38 +62,47 @@ public class MyActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
 
-        //buttons of emergency numbers
-        Button militaryCall = (Button) findViewById(R.id.military_button);
-        Button frontSecurityCall = (Button) findViewById(R.id.front_security_button);
-        Button backSecurityCall = (Button) findViewById(R.id.back_security_button);
-        Button healthButton = (Button) findViewById(R.id.health_button);
-        View.OnClickListener callListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Intent.ACTION_DIAL);
-                switch (v.getId()) {
-                    case R.id.military_button:
-                        intent.setData(Uri.parse("tel:03-2805666"));
-                        break;
-                    case R.id.front_security_button:
-                        intent.setData(Uri.parse("tel:03-4227151%2357119"));
-                        break;
-                    case R.id.back_security_button:
-                        intent.setData(Uri.parse("tel:03-4227151%2357319"));
-                        break;
-                    case R.id.health_button:
-                        intent.setData(Uri.parse("tel:03-4227151%2357270"));
-                        break;
-                    default:
-                        return;
+        if (((TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE)).getLine1Number() == null) {
+            TextView emergencyText = (TextView) findViewById(R.id.emergency_text);
+            emergencyText.setVisibility(View.GONE);
+            LinearLayout buttonBar = (LinearLayout) findViewById(R.id.button_bar);
+            buttonBar.removeAllViews();
+            buttonBar.setVisibility(View.GONE);
+        }
+        else {
+            //buttons of emergency numbers
+            Button militaryCall = (Button) findViewById(R.id.military_button);
+            Button frontSecurityCall = (Button) findViewById(R.id.front_security_button);
+            Button backSecurityCall = (Button) findViewById(R.id.back_security_button);
+            Button healthButton = (Button) findViewById(R.id.health_button);
+            View.OnClickListener callListener = new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(Intent.ACTION_DIAL);
+                    switch (v.getId()) {
+                        case R.id.military_button:
+                            intent.setData(Uri.parse("tel:03-2805666"));
+                            break;
+                        case R.id.front_security_button:
+                            intent.setData(Uri.parse("tel:03-4227151%2357119"));
+                            break;
+                        case R.id.back_security_button:
+                            intent.setData(Uri.parse("tel:03-4227151%2357319"));
+                            break;
+                        case R.id.health_button:
+                            intent.setData(Uri.parse("tel:03-4227151%2357270"));
+                            break;
+                        default:
+                            return;
+                    }
+                    startActivity(intent);
                 }
-                startActivity(intent);
-            }
-        };
-        militaryCall.setOnClickListener(callListener);
-        frontSecurityCall.setOnClickListener(callListener);
-        backSecurityCall.setOnClickListener(callListener);
-        healthButton.setOnClickListener(callListener);
+            };
+            militaryCall.setOnClickListener(callListener);
+            frontSecurityCall.setOnClickListener(callListener);
+            backSecurityCall.setOnClickListener(callListener);
+            healthButton.setOnClickListener(callListener);
+        }
 
 
         //create a ncu location client
@@ -159,11 +171,16 @@ public class MyActivity extends Activity {
             builder.setIcon(R.drawable.ic_launcher);
             builder.setTitle(R.string.network_unreachable);
             builder.setMessage(R.string.open_network_message);
-            builder.setNegativeButton(R.string.cancel, null);
+            builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    finish();
+                }
+            });
             builder.setPositiveButton(R.string.network_settings, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    startActivityForResult(new Intent(Settings.ACTION_SETTINGS), 2);
+                    startActivity(new Intent(Settings.ACTION_SETTINGS));
                 }
             });
             builder.show();
@@ -179,7 +196,7 @@ public class MyActivity extends Activity {
         isSelected[position] = !isSelected[position];
         if (isSelected[position]) {
             selectNumber++;
-            view.setBackgroundColor(Color.HSVToColor(new float[] {position * 19, (float) 0.4, (float) 0.9}));
+            view.setBackgroundColor(Color.HSVToColor(new float[] {position * 19, (float) 0.7, (float) 0.9}));
             if (selectNumber == 1)
                 submitItem.setVisible(true);
         }

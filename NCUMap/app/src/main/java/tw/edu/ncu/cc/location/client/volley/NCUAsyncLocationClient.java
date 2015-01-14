@@ -50,6 +50,13 @@ public class NCUAsyncLocationClient implements AsynLocationClient {
     }
 
     @Override
+    public void getPlaceUnits( String placeName, ResponseListener< Unit > responseListener ) {
+        sendRequest(
+                "/place/name/" + Uri.encode( placeName ) + "/units", responseListener, new TypeToken< ResultWrapper<Unit> >(){}
+        );
+    }
+
+    @Override
     public void getPeople( String peopleName, ResponseListener<Person> responseListener ) {
         sendRequest(
                 "/person/name/" + Uri.encode( peopleName ), responseListener, new TypeToken< ResultWrapper<Person> >(){}
@@ -71,12 +78,11 @@ public class NCUAsyncLocationClient implements AsynLocationClient {
     }
 
     private <T> void sendRequest( String path, final ResponseListener<T> responseListener, final TypeToken typeToken ) {
-        Log.w("Request", baseURL + path);
+        Log.w("NCULocationClient", "Request: " + baseURL + path);
         queue.add( new StringRequest( Request.Method.GET, baseURL + path,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse( String response ) {
-                        Log.w("Response", response);
                         ResultWrapper<T> wrapper = new Gson().fromJson( response, typeToken.getType() );
                         responseListener.onResponse( ResponseConverter.convert( wrapper ) );
                     }
@@ -90,9 +96,7 @@ public class NCUAsyncLocationClient implements AsynLocationClient {
         ) );
     }
 
-
     public RequestQueue getQueue() {
         return queue;
     }
-
 }

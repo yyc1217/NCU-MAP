@@ -208,8 +208,14 @@ public class MapsActivity extends ActionBarActivity
                 NCUMarker ncuMarker = idMarkerMap.get(marker.getId());
                 if (ncuMarker.getWordType().equals(WordType.PLACE)) {
                     Place place = (Place) ncuMarker.getObject();
-                    if (!place.getType().equals(PlaceType.SPORT_RECREATION))
-                        return;
+                    switch (place.getType()) {
+                        case SPORT_RECREATION:
+                        case ADMINISTRATION:
+                        case RESEARCH:
+                            break;
+                        default:
+                            return;
+                    }
                 }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getTitle() + " " + marker.getSnippet());
@@ -227,8 +233,15 @@ public class MapsActivity extends ActionBarActivity
                         break;
                     case PLACE:
                         Place place = (Place) ncuMarker.getObject();
-                        message = new ImageView(MapsActivity.this);
-                        getNetImage((ImageView) message, place.getPictureName());
+                        if (place.getType().equals(PlaceType.SPORT_RECREATION)) {
+                            message = new ImageView(MapsActivity.this);
+                            getNetImage((ImageView) message, place.getPictureName());
+                        }
+                        else {
+                            message = getLayoutInflater().inflate(R.layout.dialog_content, null);
+                            ((TextView) message).setMovementMethod(LinkMovementMethod.getInstance());
+                            getPlaceUnits((TextView) message, place.getChineseName());
+                        }
                         break;
                     case UNIT:
                         Unit unit = (Unit) ncuMarker.getObject();
@@ -318,6 +331,40 @@ public class MapsActivity extends ActionBarActivity
         locationClient.getQueue().add(imageRequest);
     }
 
+    private void getPlaceUnits(final TextView textView, String name) {
+        textView.setText("目前沒有可顯示的資訊");
+        locationClient.getPlaceUnits(name, new ResponseListener<Unit>() {
+            @Override
+            public void onResponse(List<Unit> responses) {
+                boolean first = true;
+                for (Unit unit : responses) {
+                    String unitName = unit.getChineseName() + (unit.getEnglishName() == null ? "" :" " + unit.getEnglishName());
+                    if (first) {
+                        if (unit.getUrl() == null || unit.getUrl().equals(""))
+                            textView.setText(unitName);
+                        else
+                            textView.setText(Html.fromHtml("<a href=\"" + unit.getUrl() + "\">"
+                                + unitName + "</a>"));
+                        first = false;
+                    }
+                    else {
+                        if (unit.getUrl() == null || unit.getUrl().equals(""))
+                            textView.append(Html.fromHtml("<br />") + unitName);
+                        else
+                            textView.append(Html.fromHtml("<br /><a href=\"" + unit.getUrl() + "\">"
+                                + unitName + "</a>"));
+                    }
+                }
+                Log.w("PLaceUnitsText", textView.getText().toString());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+
+            }
+        });
+    }
+
     private List<NCUMarker> setPlaces(List<Place> places, float iconColor) {
         List<NCUMarker> markers = new ArrayList<>();
         for (Place place : places) {
@@ -395,7 +442,7 @@ public class MapsActivity extends ActionBarActivity
         PlaceType placeType = queryDatas.get(position).getPlaceType();
         Marker marker = placeTypeMarkersMap.get(placeType).get(which).getMarker();
         LatLng latLng = marker.getPosition();
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18));
     }
 }
 
