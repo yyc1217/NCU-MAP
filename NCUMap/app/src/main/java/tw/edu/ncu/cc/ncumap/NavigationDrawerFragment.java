@@ -107,7 +107,7 @@ public class NavigationDrawerFragment extends Fragment implements ListAdapter.On
 
         Boolean[] addToIsItemSelected = new Boolean[items.size()];
         Arrays.fill(addToIsItemSelected, true);
-        isItemSelected = new ArrayList<>(Arrays.asList(addToIsItemSelected));
+        isItemSelected = new ArrayList(Arrays.asList(addToIsItemSelected));
 
         mDrawerListAdapter = new ListAdapter(getActivity(), items, expandItems, isItemSelected, this, this);
         mDrawerListView.setAdapter(mDrawerListAdapter);
@@ -312,8 +312,9 @@ class ListAdapter extends BaseAdapter {
                     expandTextView.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            if (onExpandItemSelectedListener != null)
+                            if (onExpandItemSelectedListener != null) {
                                 onExpandItemSelectedListener.onExpandItemSelected(position, finalI);
+                            }
                         }
                     });
                     finalConvertView.addView(expandTextView);

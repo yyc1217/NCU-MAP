@@ -1,18 +1,16 @@
 package tw.edu.ncu.cc.ncumap;
 
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
+import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.View;
@@ -45,6 +43,7 @@ import tw.edu.ncu.cc.location.data.place.Place;
 import tw.edu.ncu.cc.location.data.place.PlaceType;
 import tw.edu.ncu.cc.location.data.unit.Unit;
 
+
 /**
  * Created by Tatsujin on 2014/10/6.
  */
@@ -55,35 +54,31 @@ public class MapsActivity extends ActionBarActivity
     private NCUAsyncLocationClient locationClient;
     private NavigationDrawerFragment mNavigationDrawerFragment;
 
-    private List<QueryData> queryDatas;
-    private List<Word> words;
+    private List<QueryData> queryDataList;
+    private List<Word> words = new ArrayList<Word>();
 
-    private Map<String, NCUMarker> idMarkerMap;
-    private Map<PlaceType, ArrayList<NCUMarker>> placeTypeMarkersMap;
-    private Map<Word, ArrayList<NCUMarker>> wordMarkersMap;
+    private Map<String, NCUMarker> idMarkerMap = new HashMap<String, NCUMarker>();
+    private Map<PlaceType, List<NCUMarker>> placeTypeMarkersMap = new HashMap<PlaceType, List<NCUMarker>>();
+    private Map<Word, List<NCUMarker>> wordMarkersMap = new HashMap<Word, List<NCUMarker>>();
 
-    private Map<PlaceType, ArrayList<String>> navigationExpandItems;
+    private Map<PlaceType, ArrayList<String>> navigationExpandItems = new HashMap<PlaceType, ArrayList<String>>();
 
-    private final LatLng ncuLocation = new LatLng(24.968297, 121.192151);
+    private static final LatLng ncuLocation = new LatLng(24.968297, 121.192151);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
 
-        idMarkerMap = new HashMap<>();
-        placeTypeMarkersMap = new HashMap<>();
-        wordMarkersMap = new HashMap<>();
         locationClient = MyActivity.locationClient;
-        queryDatas = MyActivity.selectedQueryOptions;
-        words = new ArrayList<>();
+        queryDataList = MyActivity.selectedQueryOptions;
 
-        ArrayList<NavigationListItem> navigationItems = new ArrayList<>();
-        navigationExpandItems = new HashMap<>();
+        ArrayList<NavigationListItem> navigationItems = new ArrayList<NavigationListItem>();
+
         Word word = MyActivity.word;
+
         if (word != null) {
             int color = 0;
             switch (word.getType()) {
@@ -102,7 +97,7 @@ public class MapsActivity extends ActionBarActivity
             words.add(word);
         }
 
-        for (QueryData queryData : queryDatas) {
+        for (QueryData queryData : queryDataList) {
             navigationItems.add(new NavigationListItem(queryData.getPlaceTypeTC(), queryData.getPlaceType(), Color.HSVToColor(new float[]{queryData.getNum() * 19, (float) 0.8, (float) 0.5})));
             if (queryData.isNeedList())
                 navigationExpandItems.put(queryData.getPlaceType(), new ArrayList<String>());
@@ -122,7 +117,7 @@ public class MapsActivity extends ActionBarActivity
         if (MyActivity.word != null)
             setWord(MyActivity.word);
 
-        for (final QueryData queryData : queryDatas) {
+        for (final QueryData queryData : queryDataList) {
             Log.w("PlaceType", queryData.getPlaceType().value());
             locationClient.getPlaces(queryData.getPlaceType(), new ResponseListener<Place>() {
                 @Override
@@ -206,7 +201,7 @@ public class MapsActivity extends ActionBarActivity
             @Override
             public void onInfoWindowClick(Marker marker) {
                 NCUMarker ncuMarker = idMarkerMap.get(marker.getId());
-                if (ncuMarker.getWordType().equals(WordType.PLACE)) {
+                if (WordType.PLACE.equals(ncuMarker.getWordType())) {
                     Place place = (Place) ncuMarker.getObject();
                     switch (place.getType()) {
                         case SPORT_RECREATION:
@@ -233,7 +228,7 @@ public class MapsActivity extends ActionBarActivity
                         break;
                     case PLACE:
                         Place place = (Place) ncuMarker.getObject();
-                        if (place.getType().equals(PlaceType.SPORT_RECREATION)) {
+                        if (PlaceType.SPORT_RECREATION.equals(place.getType())) {
                             message = new ImageView(MapsActivity.this);
                             getNetImage((ImageView) message, place.getPictureName());
                         }
@@ -340,19 +335,18 @@ public class MapsActivity extends ActionBarActivity
                 for (Unit unit : responses) {
                     String unitName = unit.getChineseName() + (unit.getEnglishName() == null ? "" :" " + unit.getEnglishName());
                     if (first) {
-                        if (unit.getUrl() == null || unit.getUrl().equals(""))
+                        if (TextUtils.isEmpty(unit.getUrl())) {
                             textView.setText(unitName);
-                        else
-                            textView.setText(Html.fromHtml("<a href=\"" + unit.getUrl() + "\">"
-                                + unitName + "</a>"));
+                        } else {
+                                textView.setText(Html.fromHtml("<a href=\"" + unit.getUrl() + "\">" + unitName + "</a>"));
+                        }
                         first = false;
-                    }
-                    else {
-                        if (unit.getUrl() == null || unit.getUrl().equals(""))
+                    } else {
+                        if (TextUtils.isEmpty(unit.getUrl())) {
                             textView.append(Html.fromHtml("<br />") + unitName);
-                        else
-                            textView.append(Html.fromHtml("<br /><a href=\"" + unit.getUrl() + "\">"
-                                + unitName + "</a>"));
+                        } else {
+                            textView.append(Html.fromHtml("<br /><a href=\"" + unit.getUrl() + "\">" + unitName + "</a>"));
+                        }
                     }
                 }
                 Log.w("PLaceUnitsText", textView.getText().toString());
@@ -366,7 +360,7 @@ public class MapsActivity extends ActionBarActivity
     }
 
     private List<NCUMarker> setPlaces(List<Place> places, float iconColor) {
-        List<NCUMarker> markers = new ArrayList<>();
+        List<NCUMarker> markers = new ArrayList<NCUMarker>();
         for (Place place : places) {
             Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(place.getLocation().getLat(), place.getLocation().getLng()))
@@ -387,7 +381,7 @@ public class MapsActivity extends ActionBarActivity
     }
 
     private List<NCUMarker> setUnits(List<Unit> units) {
-        List<NCUMarker> markers = new ArrayList<>();
+        List<NCUMarker> markers = new ArrayList<NCUMarker>();
         for (Unit unit : units) {
             if (unit.getLocation() == null)
                 continue;
@@ -404,7 +398,7 @@ public class MapsActivity extends ActionBarActivity
     }
 
     private List<NCUMarker> setPeople(List<Person> people) {
-        List<NCUMarker> markers = new ArrayList<>();
+        List<NCUMarker> markers = new ArrayList<NCUMarker>();
         for (Person person : people) {
             if (person.getPrimaryUnit().getLocation() == null)
                 continue;
@@ -430,7 +424,7 @@ public class MapsActivity extends ActionBarActivity
         }
         else {
             position -= wordMarkersMap.size();
-            PlaceType placeType = queryDatas.get(position).getPlaceType();
+            PlaceType placeType = queryDataList.get(position).getPlaceType();
             for (NCUMarker ncuMarker : placeTypeMarkersMap.get(placeType))
                 ncuMarker.getMarker().setVisible(selected);
         }
@@ -439,7 +433,7 @@ public class MapsActivity extends ActionBarActivity
     @Override
     public void onNavigationDrawerExpandItemSelected(int position, int which) {
         position -= wordMarkersMap.size();
-        PlaceType placeType = queryDatas.get(position).getPlaceType();
+        PlaceType placeType = queryDataList.get(position).getPlaceType();
         Marker marker = placeTypeMarkersMap.get(placeType).get(which).getMarker();
         LatLng latLng = marker.getPosition();
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18));

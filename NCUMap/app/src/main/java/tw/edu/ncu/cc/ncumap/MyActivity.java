@@ -155,7 +155,7 @@ public class MyActivity extends ActionBarActivity {
         //initialize
         Arrays.fill(isSelected, false);
         word = null;
-        selectedQueryOptions = new ArrayList<>();
+        selectedQueryOptions = new ArrayList<QueryData>();
         selectNumber = 0;
         if (submitItem != null)
             submitItem.setVisible(false);
