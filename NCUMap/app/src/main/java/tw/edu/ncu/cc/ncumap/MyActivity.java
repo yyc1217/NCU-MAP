@@ -258,7 +258,7 @@ public class MyActivity extends ActionBarActivity {
                                 for (int j = 0; j < i; j++) {
                                     searchSuggestionToString[j] = searchSuggestions[j].getWord();
                                 }
-                                suggestionList.setAdapter(new ArrayAdapter<String>(getApplicationContext(),
+                                suggestionList.setAdapter(new ArrayAdapter<>(getApplicationContext(),
                                         android.R.layout.simple_list_item_1, searchSuggestionToString));
                             }
 
